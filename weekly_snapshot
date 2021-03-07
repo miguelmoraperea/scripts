@@ -1,0 +1,86 @@
+#!/bin/bash
+# -------------------------------------------------------------------------------------------------
+# Weekly snapshots
+# -------------------------------------------------------------------------------------------------
+
+unset PATH
+
+# ------------- System commands used by this script -----------------------------------------------
+
+ID=/usr/bin/id;
+ECHO=/bin/echo;
+
+MOUNT=/bin/mount;
+UMOUNT=/bin/umount;
+RM=/bin/rm;
+MV=/bin/mv;
+CP=/bin/cp;
+MKDIR=/bin/mkdir;
+
+
+# ------------- File locations --------------------------------------------------------------------
+
+MOUNT_RO=/home/miguel/hdd2;
+SNAPSHOT_RW=/root/snapshot;
+
+
+# ------------- The script itself -----------------------------------------------------------------
+
+# Make sure we're running as root
+if (( `$ID -u` != 0 )); then { $ECHO "Sorry, must be root.  Exiting..."; exit; } fi
+
+# Attempt to remount the RW mount point as RW; else abort
+$MOUNT --bind $MOUNT_RO $SNAPSHOT_RW ;
+$MOUNT -o remount,rw $MOUNT_RO $SNAPSHOT_RW ;
+if (( $? )); then
+{
+    $ECHO "snapshot: could not remount $SNAPSHOT_RW readwrite";
+    exit;
+}
+fi;
+
+# Create directories if they do not exist
+$MKDIR -p $SNAPSHOT_RW/weekly.4
+$MKDIR -p $SNAPSHOT_RW/weekly.3
+$MKDIR -p $SNAPSHOT_RW/weekly.2
+$MKDIR -p $SNAPSHOT_RW/weekly.1
+$MKDIR -p $SNAPSHOT_RW/weekly.0
+
+
+# Step 1: delete the oldest snapshot, if it exists:
+if [ -d $SNAPSHOT_RW/weekly.4 ] ; then          \
+$RM -rf $SNAPSHOT_RW/weekly.4 ;                 \
+fi ;
+
+if [ -d $SNAPSHOT_RW/weekly.3 ] ; then          \
+$MV $SNAPSHOT_RW/weekly.3 $SNAPSHOT_RW/weekly.4 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/weekly.2 ] ; then          \
+$MV $SNAPSHOT_RW/weekly.2 $SNAPSHOT_RW/weekly.3 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/weekly.1 ] ; then          \
+$MV $SNAPSHOT_RW/weekly.1 $SNAPSHOT_RW/weekly.2 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/weekly.0 ] ; then          \
+$MV $SNAPSHOT_RW/weekly.0 $SNAPSHOT_RW/weekly.1;    \
+fi;
+
+# Step 3: make a hard-link-only (except for dirs) copy of
+# daily.6, assuming that exists, into weekly.0
+if [ -d $SNAPSHOT_RW/daily.6 ] ; then                   \
+$CP -alv $SNAPSHOT_RW/daily.6 $SNAPSHOT_RW/weekly.0 ;   \
+fi;
+
+# Note: do *not* update the mtime of weekly.0; it will reflect when daily.6 was
+# made, which should be correct.
+
+# Now unmount snapshot
+$UMOUNT $SNAPSHOT_RW ;
+if (( $? )); then
+{
+    $ECHO "snapshot: could not umount $SNAPSHOT_RW";
+    exit;
+} fi

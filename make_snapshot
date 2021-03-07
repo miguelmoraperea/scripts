@@ -1,0 +1,100 @@
+#!/bin/bash
+# -------------------------------------------------------------------------------------------------
+# Rotating-filesystem-snapshot utility
+# -------------------------------------------------------------------------------------------------
+
+unset PATH
+
+# ------------- System commands used by this script -----------------------------------------------
+
+ID=/usr/bin/id;
+ECHO=/bin/echo;
+
+MOUNT=/bin/mount;
+UMOUNT=/bin/umount;
+RM=/bin/rm;
+MV=/bin/mv;
+CP=/bin/cp;
+TOUCH=/bin/touch;
+MKDIR=/bin/mkdir;
+
+RSYNC=/usr/bin/rsync;
+
+
+# ------------- File locations --------------------------------------------------------------------
+
+MOUNT_RO=/home/miguel/hdd2;
+SNAPSHOT_RW=/root/snapshot;
+EXCLUDES=
+
+
+# ------------- The script itself -----------------------------------------------------------------
+
+# Make sure we're running as root
+if (( `$ID -u` != 0 )); then { $ECHO "Sorry, must be root.  Exiting..."; exit; } fi
+
+# Attempt to remount the RW mount point as RW; else abort
+$MOUNT --bind $MOUNT_RO $SNAPSHOT_RW ;
+$MOUNT -o remount,rw $MOUNT_RO $SNAPSHOT_RW ;
+if (( $? )); then
+{
+    $ECHO "snapshot: could not remount $SNAPSHOT_RW readwrite";
+    exit;
+}
+fi;
+
+# Create directories if they do not exist
+$MKDIR -p $SNAPSHOT_RW/hourly.5
+$MKDIR -p $SNAPSHOT_RW/hourly.4
+$MKDIR -p $SNAPSHOT_RW/hourly.3
+$MKDIR -p $SNAPSHOT_RW/hourly.2
+$MKDIR -p $SNAPSHOT_RW/hourly.1
+$MKDIR -p $SNAPSHOT_RW/hourly.0
+
+# Step 1: delete the oldest snapshot, if it exists:
+if [ -d $SNAPSHOT_RW/hourly.5 ] ; then              \
+$RM -rf $SNAPSHOT_RW/hourly.5 ;                     \
+fi ;
+
+# Step 2: shift the middle snapshots(s) back by one, if they exist
+if [ -d $SNAPSHOT_RW/hourly.4 ] ; then              \
+$MV $SNAPSHOT_RW/hourly.4 $SNAPSHOT_RW/hourly.5 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/hourly.3 ] ; then              \
+$MV $SNAPSHOT_RW/hourly.3 $SNAPSHOT_RW/hourly.4 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/hourly.2 ] ; then              \
+$MV $SNAPSHOT_RW/hourly.2 $SNAPSHOT_RW/hourly.3 ;   \
+fi;
+
+if [ -d $SNAPSHOT_RW/hourly.1 ] ; then              \
+$MV $SNAPSHOT_RW/hourly.1 $SNAPSHOT_RW/hourly.2 ;   \
+fi;
+
+# Step 3: make a hard-link-only (except for dirs) copy of the latest snapshot,
+# if that exists
+if [ -d $SNAPSHOT_RW/hourly.0 ] ; then                          \
+$CP -al $SNAPSHOT_RW/hourly.0 $SNAPSHOT_RW/hourly.1 ;           \
+fi;
+
+# Step 4: rsync from the system into the latest snapshot (notice that
+# rsync behaves like cp --remove-destination by default, so the destination
+# is unlinked first.  If it were not so, this would copy over the other
+# snapshot(s) too!
+$RSYNC                                                          \
+    -va --delete --delete-excluded                              \
+    --exclude-from="$EXCLUDES"                                  \
+    /home/miguel/hdd1/ $SNAPSHOT_RW/hourly.0 ;
+
+# Step 5: update the mtime of hourly.0 to reflect the snapshot time
+$TOUCH $SNAPSHOT_RW/hourly.0 ;
+
+# Now unmount snapshot
+$UMOUNT $SNAPSHOT_RW ;
+if (( $? )); then
+{
+    $ECHO "snapshot: could not umount $SNAPSHOT_RW";
+    exit;
+} fi
