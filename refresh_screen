@@ -1,0 +1,5 @@
+#!/bin/bash
+
+xrandr -s 3840x2160 --output HDMI-A-0 --scale 1x1
+sleep 2
+xrandr -s 3840x2160 --output HDMI-A-0 --scale 0.63x0.63
