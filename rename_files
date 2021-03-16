@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# This script renames all the files from the working directory to all
+# lowercase letters and under scores.
+#
+# It will not overwrite files.
+#
+
+print_colour() {
+    printf '\033[%sm%s\033[m\n' "$@"
+    # usage color "31;5" "string"
+    # 0 default
+    # 5 blink, 1 strong, 4 underlined
+    # fg: 31 red,  32 green, 33 yellow, 34 blue, 35 purple, 36 cyan, 37 white
+    # bg: 40 black, 41 red, 44 blue, 45 purple
+}
+
+
+errors=0
+
+for file in *; do
+
+    # Only process files
+    if [[ ! -f $file ]]; then
+        continue
+    fi
+
+    new_file=$(echo $file | tr [A-Z] [a-z] | tr ' ' '_')
+
+    # Skip if the file is already formatted correctly
+    if [[ $file == $new_file ]]; then
+        continue
+    fi
+
+    # Rename file if it does not already exists
+    if [[ -e $new_file ]]; then
+        print_colour '31;1'  "ERR: File [$new_file] already exists"
+        errors=$((errors + 1))
+    else
+        mv "$file" $new_file
+    fi
+    exit $errors
+done
