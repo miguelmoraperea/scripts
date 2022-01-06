@@ -28,18 +28,24 @@ SNAPSHOT_RW=/root/snapshot;
 EXCLUDES=
 
 
+# ------------- Helper functions ------------------------------------------------------------------
+error() {
+    $ECHO $1 >&2
+}
+
+
 # ------------- The script itself -----------------------------------------------------------------
 
 # Make sure we're running as root
-if (( `$ID -u` != 0 )); then { $ECHO "Sorry, must be root.  Exiting..."; exit; } fi
+if (( `$ID -u` != 0 )); then { error "Sorry, must be root.  Exiting..."; exit 1; } fi
 
 # Attempt to remount the RW mount point as RW; else abort
 $MOUNT --bind $MOUNT_RO $SNAPSHOT_RW ;
 $MOUNT -o remount,rw $MOUNT_RO $SNAPSHOT_RW ;
 if (( $? )); then
 {
-    $ECHO "snapshot: could not remount $SNAPSHOT_RW readwrite";
-    exit;
+    error "snapshot: could not remount $SNAPSHOT_RW readwrite";
+    exit 1;
 }
 fi;
 
@@ -95,6 +101,6 @@ $TOUCH $SNAPSHOT_RW/hourly.0 ;
 $UMOUNT $SNAPSHOT_RW ;
 if (( $? )); then
 {
-    $ECHO "snapshot: could not umount $SNAPSHOT_RW";
-    exit;
+    error "snapshot: could not umount $SNAPSHOT_RW";
+    exit 1;
 } fi
