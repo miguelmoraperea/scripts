@@ -46,7 +46,7 @@ if (( $? )); then
 fi;
 
 # create directories if they do not exist
-5MKDIR -p $SNAPSHOT_RW/daily.6
+$MKDIR -p $SNAPSHOT_RW/daily.6
 $MKDIR -p $SNAPSHOT_RW/daily.5
 $MKDIR -p $SNAPSHOT_RW/daily.4
 $MKDIR -p $SNAPSHOT_RW/daily.3
